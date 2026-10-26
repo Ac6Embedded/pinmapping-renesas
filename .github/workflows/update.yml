@@ -1,0 +1,134 @@
+name: Update pin mapping
+
+# Checks Renesas's FSP releases every 3 days and publishes a slim
+# pin-mapping archive for any version not published yet. Also runs when the
+# build script or this workflow changes, and on demand.
+on:
+  schedule:
+    - cron: "17 5 */3 * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - ".github/workflows/update.yml"
+  workflow_dispatch:
+    inputs:
+      fsp-version:
+        description: "FSP version to publish (empty: Renesas's latest release)"
+        required: false
+        default: ""
+      force:
+        description: "Rebuild and replace the release if it is already published"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: update-pin-mapping
+  cancel-in-progress: false
+
+defaults:
+  run:
+    # Explicit bash adds -o pipefail, so `cmd | tee` fails when cmd fails.
+    shell: bash
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        family: [ra]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      FAMILY: ${{ matrix.family }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Find the Renesas release
+        id: src
+        env:
+          FSP_VERSION: ${{ inputs.fsp-version }}
+        run: python scripts/pinmapping.py resolve --family "$FAMILY" --version "$FSP_VERSION" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Check whether it is already published
+        id: pub
+        env:
+          TAG: ${{ steps.src.outputs.tag }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          elif [ "$FORCE" = "true" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "replace=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$TAG is already published"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        if: steps.pub.outputs.publish == 'true'
+        env:
+          VERSION: ${{ steps.src.outputs.version }}
+        run: python scripts/pinmapping.py build --family "$FAMILY" --version "$VERSION" --out dist
+
+      # When the release exists, its index still goes through the next step,
+      # so a run that published but failed to push the index heals here.
+      - name: Fetch the published index
+        if: steps.pub.outputs.publish != 'true'
+        env:
+          TAG: ${{ steps.src.outputs.tag }}
+        run: gh release download "$TAG" --pattern "index-$FAMILY.json" --dir dist
+
+      - name: Refresh the index
+        id: index
+        run: python scripts/pinmapping.py index "dist/index-$FAMILY.json" --index-dir index | tee -a "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        if: steps.pub.outputs.publish == 'true'
+        env:
+          TAG: ${{ steps.src.outputs.tag }}
+          TITLE: ${{ steps.src.outputs.title }}
+          VERSION: ${{ steps.src.outputs.version }}
+          LATEST: ${{ steps.index.outputs.current == steps.src.outputs.version }}
+          REPLACE: ${{ steps.pub.outputs.replace }}
+        run: |
+          if [ "$REPLACE" = "true" ]; then
+            gh release delete "$TAG" --yes --cleanup-tag
+          fi
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "$TITLE pin mapping, FSP $VERSION" \
+            --notes-file "dist/NOTES-$FAMILY.md" \
+            --latest="$LATEST" \
+            "dist/renesas-$FAMILY-pinmapping-$VERSION.zip" \
+            "dist/index-$FAMILY.json"
+
+      - name: Push the index
+        if: steps.index.outputs.changed == 'true'
+        env:
+          TITLE: ${{ steps.src.outputs.title }}
+          VERSION: ${{ steps.index.outputs.current }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index
+          git commit -m "Index $TITLE pin mapping for FSP $VERSION"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      # Scheduled workflows stop after 60 days without repository activity;
+      # re-enabling the workflow resets that timer without a commit.
+      - name: Keep the schedule alive
+        if: always()
+        continue-on-error: true
+        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/update.yml/enable"
