@@ -75,8 +75,10 @@ def archive_name(family: str, version: str) -> str:
 
 
 def version_key(version: str) -> tuple:
-    """Order versions numerically: 6.10.0 > 6.9.1."""
-    return tuple(int(p) if p.isdigit() else -1 for p in re.split(r"[.\-+]", version))
+    """Order versions numerically: 6.10.0 > 6.9.1, 6.6.0 > 6.6.0-rc.1
+    (missing parts count as 0, text parts as -1)."""
+    parts = [int(p) if p.isdigit() else -1 for p in re.split(r"[.\-+]", version)]
+    return tuple(parts + [0] * (8 - len(parts)))
 
 
 def _request(url: str) -> urllib.request.Request:

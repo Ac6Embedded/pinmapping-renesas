@@ -124,6 +124,8 @@ class BuildTests(unittest.TestCase):
     def test_versions_order_numerically(self):
         self.assertGreater(pinmapping.version_key("6.10.0"), pinmapping.version_key("6.9.1"))
         self.assertGreater(pinmapping.version_key("7.0.0"), pinmapping.version_key("6.99.99"))
+        self.assertGreater(pinmapping.version_key("6.6.0"), pinmapping.version_key("6.6.0-rc.1"))
+        self.assertEqual(pinmapping.version_key("6.6"), pinmapping.version_key("6.6.0"))
 
 
 if __name__ == "__main__":
