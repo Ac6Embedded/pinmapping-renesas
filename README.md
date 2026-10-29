@@ -1,25 +1,27 @@
 # Renesas pin mapping
 
-Pin-mapping data of Renesas MCUs, taken from Renesas's FSP releases and
-repackaged small.
+Pin-mapping and clock data of Renesas MCUs, taken from Renesas's FSP releases
+and repackaged small.
 
-Renesas ships the pin data of its configurators (the Pins tab of e2 studio
-and the Smart Configurators) inside the FSP packs archive of each
-[FSP release](https://github.com/renesas/fsp/releases), about 180 MB. Pin
-tools only need three small files from each MCU series pack:
+Renesas ships the pin and clock data of its configurators (the Pins and Clocks
+tabs of e2 studio and the Smart Configurators) inside the FSP packs archive of
+each [FSP release](https://github.com/renesas/fsp/releases), about 180 MB. Pin
+and clock tools only need a few files from each MCU series pack:
 
 | File | Content |
 |---|---|
 | `.mcu/.pinmapping/plugin<series>.xml` | device and package to pin file |
 | `.mcu/.pinmapping/<pin file>.xml` | the pins of one package and the functions each pin offers |
 | `.mcu/.pinconfig/<PART>.pincfg` | part number to device and package |
+| `.module_descriptions/Renesas##BSP##<series>##fsp####<version>.xml` | the BSP settings of the series, with its clock tree: clock sources, divider and multiplier choices, frequency limits |
 
 Each release here holds the series packs of one FSP version with only those
 files, under the original pack names and inner paths, so a tool that reads the
-original packs reads these unchanged. About 14 MB instead of 180 MB.
+original packs reads these unchanged. About 15 MB instead of 180 MB.
 
 Used by [Devicetree Manager for Zephyr](https://github.com/Ac6Embedded/vscode-devicetree-manager-for-zephyr)
-to offer the pin functions of Renesas RA and RA0 chips.
+to offer the pin functions of Renesas RA and RA0 chips and to check their
+clock settings.
 
 ## Releases
 
@@ -47,7 +49,7 @@ download `archive.url` and check `archive.sha256`:
     "name": "renesas-ra-pinmapping-6.6.0.zip",
     "url": "https://github.com/Ac6Embedded/pinmapping-renesas/releases/download/ra-fsp-v6.6.0/renesas-ra-pinmapping-6.6.0.zip",
     "sha256": "...",
-    "size": 13819604
+    "size": 14761130
   }
 }
 ```

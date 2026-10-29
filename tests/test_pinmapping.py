@@ -30,6 +30,10 @@ def fake_pack(series: str) -> bytes:
         f".mcu/.iofiles/R7FA{series.upper()}.svd": "svd" * 1000,
         f"ra/fsp/src/bsp/mcu/{series}/bsp_mcu_info.h": "#define X 1",
         ".module_descriptions/Renesas##BSP.xml": "<module/>",
+        f".module_descriptions/Renesas##BSP##{series}##fsp####6.6.0.xml": "<raModuleDescription><clock/></raModuleDescription>",
+        f".module_descriptions/Renesas##BSP##{series}##device####6.6.0.xml": "<raModuleDescription/>",
+        f".module_descriptions/Renesas##BSP##{series}##device##R7FA{series.upper()}BH3CFC##6.6.0.xml": "<raModuleDescription/>",
+        f".module_descriptions/Renesas##BSP##{series}##linker####6.6.0.xml": "<raModuleDescription/>",
         "Renesas.RA_mcu.pdsc": "<package/>",
     })
 
@@ -57,7 +61,7 @@ class BuildTests(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_keeps_only_series_packs_and_pin_mapping_entries(self):
+    def test_keeps_only_series_packs_and_their_pin_and_clock_entries(self):
         index = pinmapping.build("ra", "6.6.0", self.fsp, self.dir / "dist", SOURCE)
         archive = zipfile.ZipFile(self.dir / "dist" / "renesas-ra-pinmapping-6.6.0.zip")
         self.assertEqual(archive.namelist(), [
@@ -70,6 +74,7 @@ class BuildTests(unittest.TestCase):
             ".mcu/.pinconfig/R7FARA6M5BH3CFC.pincfg",
             ".mcu/.pinmapping/PinCfgR7FARA6M5xxxFC.xml",
             ".mcu/.pinmapping/pluginra6m5.xml",
+            ".module_descriptions/Renesas##BSP##ra6m5##fsp####6.6.0.xml",
         ])
         self.assertEqual(pack.read(".mcu/.pinmapping/PinCfgR7FARA6M5xxxFC.xml"), b"<pinMappings/>" * 50)
         self.assertEqual(index["packs"], 2)

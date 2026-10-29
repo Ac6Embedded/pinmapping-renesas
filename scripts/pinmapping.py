@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Build slim Renesas pin-mapping archives from Renesas FSP pack releases.
 
-Renesas publishes its configurator packs (the data behind the Pins tab of
-e2 studio and the Smart Configurators) as one big archive per FSP release.
-Pin tools only need three small files from each MCU series pack:
+Renesas publishes its configurator packs (the data behind the Pins and Clocks
+tabs of e2 studio and the Smart Configurators) as one big archive per FSP
+release. Pin and clock tools only need a few files from each MCU series pack:
 
   .mcu/.pinmapping/plugin<series>.xml   device + package -> pin file
   .mcu/.pinmapping/<pin file>.xml       pins of a package and their functions
   .mcu/.pinconfig/<PART>.pincfg         part number -> device + package
+  .module_descriptions/Renesas##BSP##<series>##fsp####<version>.xml
+                                        BSP settings of the series, with its
+                                        clock tree (sources, dividers, limits)
 
 This script keeps exactly those, in packs with the original names and inner
 paths, so a reader of the original packs reads these unchanged.
@@ -50,8 +53,10 @@ FAMILIES = {
     },
 }
 
-# Entries kept from each pack.
-KEEP = re.compile(r"^\.mcu/\.(?:pinmapping/[^/]+\.xml|pinconfig/[^/]+\.pincfg)$")
+# Entries kept from each pack: the pin files and the series' BSP description
+# (not the per-part `##device##` ones).
+KEEP = re.compile(r"^(?:\.mcu/\.(?:pinmapping/[^/]+\.xml|pinconfig/[^/]+\.pincfg)"
+                  r"|\.module_descriptions/Renesas##BSP##[0-9A-Za-z]+##fsp####[^/#]+\.xml)$")
 
 # Release versions accepted from Renesas or from the command line.
 VERSION = re.compile(r"^[0-9]+(?:\.[0-9]+)*(?:-[0-9A-Za-z.]+)?$")
@@ -146,7 +151,7 @@ def _write(zf: zipfile.ZipFile, name: str, data: bytes) -> None:
 
 
 def slim_pack(pack: bytes) -> tuple[bytes, int]:
-    """A pack holding only the pin-mapping entries, same paths. Returns
+    """A pack holding only the KEEP entries, same paths. Returns
     (bytes, number of entries kept)."""
     src = zipfile.ZipFile(io.BytesIO(pack))
     names = sorted(n for n in src.namelist() if KEEP.match(n))
@@ -191,7 +196,8 @@ def build(family: str, version: str, fsp_zip: Path, out_dir: Path, source: dict)
             "sha256": sha,
             "size": archive.stat().st_size,
         },
-        "layout": "packs/<pack name>.pack, each keeping .mcu/.pinmapping/*.xml and .mcu/.pinconfig/*.pincfg",
+        "layout": "packs/<pack name>.pack, each keeping .mcu/.pinmapping/*.xml, .mcu/.pinconfig/*.pincfg"
+                  " and .module_descriptions/Renesas##BSP##<series>##fsp####<version>.xml",
         "packs": len(packs),
         "source": source,
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
