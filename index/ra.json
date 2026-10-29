@@ -6,10 +6,10 @@
   "archive": {
     "name": "renesas-ra-pinmapping-6.6.0.zip",
     "url": "https://github.com/Ac6Embedded/pinmapping-renesas/releases/download/ra-fsp-v6.6.0/renesas-ra-pinmapping-6.6.0.zip",
-    "sha256": "5ef8aa1076ed2b327e144f33e7de58803cb4c960791d5f0284abc781b5a1ff1e",
-    "size": 13819604
+    "sha256": "98009f7ce3700a0a4ae06fb210c24c2adcd9ae186856081e3cad7a514f71a74a",
+    "size": 14761130
   },
-  "layout": "packs/<pack name>.pack, each keeping .mcu/.pinmapping/*.xml and .mcu/.pinconfig/*.pincfg",
+  "layout": "packs/<pack name>.pack, each keeping .mcu/.pinmapping/*.xml, .mcu/.pinconfig/*.pincfg and .module_descriptions/Renesas##BSP##<series>##fsp####<version>.xml",
   "packs": 40,
   "source": {
     "repository": "renesas/fsp",
@@ -18,5 +18,5 @@
     "asset": "FSP_Packs_v6.6.0.zip",
     "sha256": "a6925c8ff8566003de7147ac5594398ca44703985b03898d53e524e651a3645b"
   },
-  "generated": "2026-10-26T23:22:01Z"
+  "generated": "2026-10-29T10:24:54Z"
 }
